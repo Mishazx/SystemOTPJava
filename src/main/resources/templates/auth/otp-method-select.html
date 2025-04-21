@@ -1,0 +1,109 @@
+<!--
+  Страница выбора метода OTP аутентификации.
+  Здесь пользователь выбирает как получить код подтверждения (SMS, Email, Telegram)
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Двухфакторная аутентификация</title>
+  <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-header">
+      <h1>Выберите метод подтверждения</h1>
+      <p>Для продолжения нужно подтвердить вашу личность</p>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger">
+      <svg viewBox="0 0 24 24">
+        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <span th:text="${error}"></span>
+    </div>
+
+    <form th:action="@{/auth/otp/send}" method="post">
+      <input type="hidden" name="userId" th:value="${userId}" />
+      
+      <div class="otp-methods">
+        <div class="otp-method-card">
+          <input type="radio" id="method-sms" name="method" value="SMS" checked>
+          <label for="method-sms" class="otp-method-label">
+            <svg class="otp-icon" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M6,9H18V11H6M14,14H6V12H14M18,8H6V6H18"></path>
+            </svg>
+            <div>
+              <h3>SMS</h3>
+              <p>Получить код в SMS-сообщении</p>
+              <input type="tel" name="phone" placeholder="+79XXXXXXXXX" class="form-control mt-2" required>
+            </div>
+          </label>
+        </div>
+        
+        <div class="otp-method-card">
+          <input type="radio" id="method-email" name="method" value="EMAIL">
+          <label for="method-email" class="otp-method-label">
+            <svg class="otp-icon" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"></path>
+            </svg>
+            <div>
+              <h3>Email</h3>
+              <p>Получить код по электронной почте</p>
+              <input type="email" name="email" placeholder="example@mail.com" class="form-control mt-2" required>
+            </div>
+          </label>
+        </div>
+        
+        <div class="otp-method-card">
+          <input type="radio" id="method-telegram" name="method" value="TELEGRAM">
+          <label for="method-telegram" class="otp-method-label">
+            <svg class="otp-icon" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M9.78,18.65L10.06,14.42L17.74,7.5C18.08,7.19 17.67,7.04 17.22,7.31L7.74,13.3L3.64,12C2.76,11.75 2.75,11.14 3.84,10.7L19.81,4.54C20.54,4.21 21.24,4.72 20.96,5.84L18.24,18.65C18.05,19.56 17.5,19.78 16.74,19.36L12.6,16.3L10.61,18.23C10.38,18.46 10.19,18.65 9.78,18.65Z"></path>
+            </svg>
+            <div>
+              <h3>Telegram</h3>
+              <p>Получить код в Telegram</p>
+              <input type="text" name="telegram" placeholder="@username" class="form-control mt-2" required>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Отправить код</button>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Включаем/выключаем нужные поля ввода в зависимости от выбранного метода
+      const methodInputs = document.querySelectorAll('input[name="method"]');
+      const phoneInput = document.querySelector('input[name="phone"]');
+      const emailInput = document.querySelector('input[name="email"]');
+      const telegramInput = document.querySelector('input[name="telegram"]');
+      
+      function toggleRequiredFields() {
+        const selectedMethod = document.querySelector('input[name="method"]:checked').value;
+        
+        phoneInput.required = selectedMethod === 'SMS';
+        emailInput.required = selectedMethod === 'EMAIL';
+        telegramInput.required = selectedMethod === 'TELEGRAM';
+        
+        // Визуальное отображение активности полей
+        document.querySelectorAll('.otp-method-card').forEach(card => {
+          card.classList.remove('active');
+        });
+        document.querySelector(`#method-${selectedMethod.toLowerCase()}`).closest('.otp-method-card').classList.add('active');
+      }
+      
+      methodInputs.forEach(input => {
+        input.addEventListener('change', toggleRequiredFields);
+      });
+      
+      // Инициализация
+      toggleRequiredFields();
+    });
+  </script>
+</body>
+</html> 

@@ -1,4 +1,4 @@
-package ru.mishazx.systemotpjava.services;
+package ru.mishazx.systemotpjava.services.auth;
 
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

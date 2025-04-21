@@ -1,0 +1,175 @@
+<!--
+  Страница ввода OTP кода.
+  Здесь пользователь вводит полученный код подтверждения для входа в систему.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Проверка кода доступа</title>
+  <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-header">
+      <h1>Введите код подтверждения</h1>
+      <p th:text="${'Мы отправили код на ' + deliveryDestination}">Мы отправили код на ваш телефон</p>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger">
+      <svg viewBox="0 0 24 24">
+        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <span th:text="${error}"></span>
+    </div>
+    
+    <div class="otp-timer">
+      <span id="timer">05:00</span>
+      <button id="resendBtn" class="btn-link" style="display: none;" onclick="resendCode()">Отправить новый код</button>
+    </div>
+
+    <form th:action="@{/auth/otp/verify}" method="post">
+      <input type="hidden" name="userId" th:value="${userId}" />
+      <input type="hidden" name="operationId" th:value="${operationId}" />
+      
+      <div class="otp-code-input">
+        <input type="text" name="digit1" class="form-control otp-digit" maxlength="1" required autofocus>
+        <input type="text" name="digit2" class="form-control otp-digit" maxlength="1" required>
+        <input type="text" name="digit3" class="form-control otp-digit" maxlength="1" required>
+        <input type="text" name="digit4" class="form-control otp-digit" maxlength="1" required>
+        <input type="text" name="digit5" class="form-control otp-digit" maxlength="1" required>
+        <input type="text" name="digit6" class="form-control otp-digit" maxlength="1" required>
+      </div>
+      
+      <input type="hidden" id="fullCode" name="code" required>
+
+      <button type="submit" class="btn btn-primary">Подтвердить</button>
+      
+      <div class="auth-footer">
+        <a th:href="@{/auth/otp/method}" class="btn-link">Изменить способ получения кода</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Управление вводом цифр кода
+      const digitInputs = document.querySelectorAll('.otp-digit');
+      const fullCodeInput = document.getElementById('fullCode');
+      
+      // Автопереход к следующему полю
+      digitInputs.forEach((input, index) => {
+        // Обработка вставки кода
+        input.addEventListener('paste', (e) => {
+          e.preventDefault();
+          
+          // Получаем вставляемый текст
+          const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+          
+          // Проверяем, что вставляемый текст содержит только цифры
+          if (!/^\d+$/.test(pastedText)) {
+            return;
+          }
+          
+          // Распределяем цифры по всем инпутам
+          const digits = pastedText.split('');
+          digitInputs.forEach((input, i) => {
+            if (i < digits.length) {
+              input.value = digits[i];
+            }
+          });
+          
+          // Устанавливаем фокус на последний заполненный инпут или на следующий пустой
+          const focusIndex = Math.min(digits.length, digitInputs.length - 1);
+          digitInputs[focusIndex].focus();
+          
+          // Обновляем полное значение кода
+          updateFullCode();
+        });
+        
+        input.addEventListener('input', (e) => {
+          const value = e.target.value;
+          
+          // Проверяем, не является ли ввод попыткой вставить весь код сразу
+          if (value.length > 1) {
+            // Если в поле вставлено несколько символов, распределяем их по полям
+            const digits = value.split('');
+            digitInputs.forEach((input, i) => {
+              if (i < digits.length) {
+                input.value = digits[i];
+              }
+            });
+            
+            // Устанавливаем фокус на последний заполненный инпут или на следующий пустой
+            const focusIndex = Math.min(digits.length, digitInputs.length - 1);
+            digitInputs[focusIndex].focus();
+            
+            // Обновляем полное значение кода
+            updateFullCode();
+            return;
+          }
+          
+          // Запрещаем ввод не цифр
+          if (!/^\d*$/.test(value)) {
+            e.target.value = '';
+            return;
+          }
+          
+          // Переходим к следующему полю если введена цифра
+          if (value && index < digitInputs.length - 1) {
+            digitInputs[index + 1].focus();
+          }
+          
+          // Обновляем полное значение кода
+          updateFullCode();
+        });
+        
+        // Обработка удаления и перехода назад
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !e.target.value && index > 0) {
+            digitInputs[index - 1].focus();
+          }
+        });
+      });
+      
+      // Обновляем скрытое поле с полным кодом
+      function updateFullCode() {
+        let code = '';
+        digitInputs.forEach(input => {
+          code += input.value;
+        });
+        fullCodeInput.value = code;
+      }
+      
+      // Таймер обратного отсчета
+      const timerElement = document.getElementById('timer');
+      const resendButton = document.getElementById('resendBtn');
+      let timeLeft = 5 * 60; // 5 минут в секундах
+      
+      function updateTimer() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        
+        timerElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        if (timeLeft <= 0) {
+          clearInterval(interval);
+          timerElement.textContent = 'Время истекло';
+          resendButton.style.display = 'block';
+        }
+        
+        timeLeft--;
+      }
+      
+      updateTimer();
+      const interval = setInterval(updateTimer, 1000);
+    });
+    
+    // Функция для повторной отправки кода
+    function resendCode() {
+      window.location.href = '/auth/otp/resend?userId=' + document.querySelector('input[name="userId"]').value;
+    }
+  </script>
+</body>
+</html> 

@@ -14,8 +14,9 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: create-drop
+#      ddl-auto:
       default_schema: otp
+      ddl-auto: update
   
   # Настройки шаблонизатора Thymeleaf
   thymeleaf:

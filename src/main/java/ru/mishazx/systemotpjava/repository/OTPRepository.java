@@ -19,6 +19,9 @@ public interface OTPRepository extends JpaRepository<OTPCode, Long> {
     // Найти активный код по ID пользователя, коду, статусу и ID операции
     Optional<OTPCode> findByUserIdAndCodeAndStatusAndOperationId(Long userId, String code, OTPCode.OtpStatus status, String operationId);
     
+    // Найти последний активный код пользователя
+    Optional<OTPCode> findFirstByUserIdAndStatusOrderByCreatedAtDesc(Long userId, OTPCode.OtpStatus status);
+    
     // Удалить все коды пользователя
     void deleteByUserId(Long userId);
 

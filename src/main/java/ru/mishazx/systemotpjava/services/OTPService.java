@@ -31,13 +31,13 @@ public class OTPService {
     /**
      * Генерирует OTP-код для пользователя.
      *
-     * @param userId ID пользователя
+     * @param username Имя пользователя
      * @param deliveryMethod Метод доставки
      * @param deliveryAddress Адрес доставки
      * @param operationId ID операции (опционально)
      * @return Сгенерированный OTP-код
      */
-    public String generateOtp(String userId, String deliveryMethod, String deliveryAddress, String operationId) {
+    public String generateOtp(String username, String deliveryMethod, String deliveryAddress, String operationId) {
         // Получаем текущую конфигурацию OTP
         OTPConfig config = getCurrentConfig();
         
@@ -47,7 +47,12 @@ public class OTPService {
         // Создаем новую запись OTP в базе
         OTPCode otpCode = new OTPCode();
         otpCode.setCode(code);
-        otpCode.setUserId(Long.parseLong(userId));
+        
+        // Используем хеш-код имени пользователя в качестве идентификатора
+        // Это временное решение для обработки строковых идентификаторов
+        Long userId = generateUserIdFromUsername(username);
+        otpCode.setUserId(userId);
+        
         otpCode.setOperationId(operationId);
         otpCode.setStatus(OTPCode.OtpStatus.ACTIVE);
         otpCode.setCreatedAt(LocalDateTime.now());
@@ -57,7 +62,7 @@ public class OTPService {
         
         // Сохраняем код
         otpRepository.save(otpCode);
-        log.info("Generated OTP code for user: {}, delivery method: {}", userId, deliveryMethod);
+        log.info("Generated OTP code for user: {}, delivery method: {}", username, deliveryMethod);
         
         return code;
     }
@@ -65,23 +70,26 @@ public class OTPService {
     /**
      * Проверяет валидность OTP-кода.
      *
-     * @param userId ID пользователя
+     * @param username Имя пользователя
      * @param code OTP-код
      * @param operationId ID операции (опционально)
      * @return true, если код действителен
      */
-    public boolean validateOtp(String userId, String code, String operationId) {
+    public boolean validateOtp(String username, String code, String operationId) {
+        // Используем хеш-код имени пользователя
+        Long userId = generateUserIdFromUsername(username);
+        
         // Находим активный код для пользователя
         Optional<OTPCode> otpOpt;
         
         if (operationId != null && !operationId.isEmpty()) {
             // Если указан ID операции, учитываем его при поиске
             otpOpt = otpRepository.findByUserIdAndCodeAndStatusAndOperationId(
-                Long.parseLong(userId), code, OTPCode.OtpStatus.ACTIVE, operationId);
+                userId, code, OTPCode.OtpStatus.ACTIVE, operationId);
         } else {
             // Иначе ищем любой активный код
             otpOpt = otpRepository.findByUserIdAndCodeAndStatus(
-                Long.parseLong(userId), code, OTPCode.OtpStatus.ACTIVE);
+                userId, code, OTPCode.OtpStatus.ACTIVE);
         }
         
         if (otpOpt.isPresent()) {
@@ -91,18 +99,51 @@ public class OTPService {
                 // Если код просрочен, отмечаем это
                 otp.markAsExpired();
                 otpRepository.save(otp);
-                log.warn("OTP code is expired for user: {}", userId);
+                log.warn("OTP code is expired for user: {}", username);
                 return false;
             }
             
             // Код верный и не просрочен - отмечаем как использованный
             otp.markAsUsed();
             otpRepository.save(otp);
-            log.info("OTP code successfully validated for user: {}", userId);
+            log.info("OTP code successfully validated for user: {}", username);
             return true;
         }
         
-        log.warn("Invalid OTP code provided for user: {}", userId);
+        log.warn("Invalid OTP code provided for user: {}", username);
+        return false;
+    }
+    
+    /**
+     * Получает последний активный OTP код для пользователя.
+     *
+     * @param username Имя пользователя
+     * @return Последний активный OTP код или null
+     */
+    public OTPCode getLastActiveOtp(String username) {
+        Long userId = generateUserIdFromUsername(username);
+        Optional<OTPCode> otpOpt = otpRepository.findFirstByUserIdAndStatusOrderByCreatedAtDesc(
+            userId, OTPCode.OtpStatus.ACTIVE);
+        
+        return otpOpt.orElse(null);
+    }
+    
+    /**
+     * Помечает OTP код как устаревший.
+     *
+     * @param otpId ID кода
+     * @return true, если успешно
+     */
+    public boolean markAsExpired(Long otpId) {
+        Optional<OTPCode> otpOpt = otpRepository.findById(otpId);
+        
+        if (otpOpt.isPresent()) {
+            OTPCode otp = otpOpt.get();
+            otp.markAsExpired();
+            otpRepository.save(otp);
+            return true;
+        }
+        
         return false;
     }
     
@@ -140,5 +181,18 @@ public class OTPService {
         }
         
         return code.toString();
+    }
+    
+    /**
+     * Генерирует числовой ID на основе имени пользователя.
+     * Использует хеш-код строки и преобразует его в положительное число.
+     */
+    private Long generateUserIdFromUsername(String username) {
+        // Получаем хеш-код имени пользователя и преобразуем его в положительное число
+        int hashCode = username.hashCode();
+        long positiveHash = Math.abs((long) hashCode);
+        
+        // Ограничиваем длину числа (например, до 10 знаков)
+        return positiveHash % 10000000000L;
     }
 }

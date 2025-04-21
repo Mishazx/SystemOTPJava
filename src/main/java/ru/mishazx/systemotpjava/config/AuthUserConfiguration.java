@@ -4,23 +4,27 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import ru.mishazx.systemotpjava.exceptions.CustomAuthenticationFailureHandler;
-import ru.mishazx.systemotpjava.services.AuthUserService;
+import ru.mishazx.systemotpjava.exceptions.CustomAuthenticationSuccessHandler;
+import ru.mishazx.systemotpjava.services.auth.AuthUserService;
 
 /**
  * Этот класс настраивает, как работает безопасность и авторизация в приложении.
  * Здесь описано, кто и как может заходить на разные страницы, как происходит вход/выход и как шифруются пароли.
  */
 @Configuration
+@EnableWebSecurity
 @RequiredArgsConstructor
 public class AuthUserConfiguration {
 
     // Сервис, который отвечает за работу с пользователями (поиск, проверка пароля и т.д.)
     private final AuthUserService userService;
+    private final CustomAuthenticationSuccessHandler successHandler;
 
     /**
      * Основная настройка безопасности приложения.
@@ -41,8 +45,12 @@ public class AuthUserConfiguration {
                         auth -> auth
                                 // Эти папки (css, js, img) доступны всем, даже если не вошёл в систему
                                 .requestMatchers("/css/**", "/js/**", "/img/**").permitAll()
-                                // Страницы входа и регистрации доступны всем
+                                // Страницы входа, регистрации и восстановления пароля доступны всем
                                 .requestMatchers("/login", "/register", "/forgot-password", "/error").permitAll()
+                                // Корневой путь должен быть доступен всем для правильной маршрутизации
+                                .requestMatchers("/").permitAll()
+                                // Пути OTP аутентификации доступны аутентифицированным пользователям
+                                .requestMatchers("/auth/otp/**").authenticated()
                                 // API для работы с транзакциями и категориями - только для аутентифицированных пользователей
                                 .requestMatchers("/api/**").authenticated()
                                 // Все остальные страницы - только для аутентифицированных пользователей
@@ -53,7 +61,8 @@ public class AuthUserConfiguration {
                         .passwordParameter("password")
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
-                        .defaultSuccessUrl("/dashboard", true)
+                        // Используем кастомный обработчик для перенаправления после успешного входа
+                        .successHandler(successHandler)
                         // Если не получилось войти — используем свой обработчик ошибок
                         .failureHandler(new CustomAuthenticationFailureHandler())
                         .permitAll()
