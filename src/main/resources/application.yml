@@ -1,0 +1,45 @@
+# Конфигурация приложения
+spring:
+  # Настройки источника данных (базы данных)
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/otp_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+  
+  # Настройки JPA и Hibernate
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+      default_schema: otp
+  
+  # Настройки шаблонизатора Thymeleaf
+  thymeleaf:
+    mode: HTML
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false
+    encoding: UTF-8
+    enabled: true
+  
+  # Настройки почтового сервера
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:michael.konowalov321@gmail.com}
+    password: ${MAIL_PASSWORD:xiba tvww nupo xteg}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+  
+  # Имя приложения
+  application:
+    name: SystemOTPJava
+
+# Настройка порта сервера
+server:
+  port: ${SERVER_PORT:8081} 

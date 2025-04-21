@@ -1,0 +1,11 @@
+.git
+.gitignore
+.github
+.idea
+.gradle
+build
+!build/libs/*.jar
+README.md
+.DS_Store
+*.md
+*.log 
