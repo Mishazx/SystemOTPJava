@@ -21,6 +21,8 @@ configurations {
 
 repositories {
     mavenCentral()
+    // Добавляем репозиторий jitpack.io для JSMPP
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
@@ -35,6 +37,17 @@ dependencies {
     
     // Поддержка внешней конфигурации и процессинга свойств
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    
+    // Библиотека для загрузки переменных окружения из .env файла
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    
+    // SMPP протокол для отправки SMS - временно отключен
+    // implementation 'org.jsmpp:jsmpp:2.3.11' 
+    
+    // Старые зависимости Cloudhopper (закомментированы)
+    // implementation 'com.cloudhopper:ch-smpp:5.0.9'
+    // implementation 'com.cloudhopper:ch-commons-util:6.0.4'
+    // implementation 'com.cloudhopper:ch-commons-charset:3.0.2'
     
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'

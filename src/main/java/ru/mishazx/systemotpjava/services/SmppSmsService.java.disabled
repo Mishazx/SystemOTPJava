@@ -1,0 +1,92 @@
+package ru.mishazx.systemotpjava.services;
+
+import org.jsmpp.bean.*;
+import org.jsmpp.session.SMPPSession;
+import org.jsmpp.util.AbsoluteTimeFormatter;
+import org.jsmpp.util.TimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+
+@Service
+@ConditionalOnProperty(name = "smpp.enabled", havingValue = "true", matchIfMissing = false)
+public class SmppSmsService {
+    private static final Logger logger = LoggerFactory.getLogger(SmppSmsService.class);
+    private static final TimeFormatter TIME_FORMATTER = new AbsoluteTimeFormatter();
+
+    @Value("${smpp.source-address:OTPSYSTEM}")
+    private String defaultSourceAddress;
+
+    @Value("${smpp.source-ton:5}")
+    private byte sourceTon;
+
+    @Value("${smpp.source-npi:0}")
+    private byte sourceNpi;
+
+    @Value("${smpp.destination-ton:1}")
+    private byte destTon;
+
+    @Value("${smpp.destination-npi:1}")
+    private byte destNpi;
+
+    private final SMPPSession session;
+
+    @Autowired(required = false)
+    public SmppSmsService(SMPPSession session) {
+        this.session = session;
+        if (session == null) {
+            logger.warn("SMPP сессия не настроена. Отправка SMS через SMPP будет отключена.");
+        } else {
+            logger.info("SMPP сервис успешно инициализирован");
+        }
+    }
+    
+    /**
+     * Отправляет SMS через SMPP
+     * 
+     * @param phoneNumber номер телефона получателя в международном формате
+     * @param message текст сообщения
+     * @return идентификатор сообщения или null в случае ошибки
+     */
+    public String sendSms(String phoneNumber, String message) {
+        if (session == null) {
+            logger.warn("Невозможно отправить SMS: SMPP сессия не установлена");
+            return null;
+        }
+
+        try {
+            // Отправляем сообщение и получаем ID
+            String messageId = session.submitShortMessage(
+                    "CMT",  // Тип сервиса
+                    TypeOfNumber.valueOf(sourceTon),
+                    NumberingPlanIndicator.valueOf(sourceNpi),
+                    defaultSourceAddress,
+                    TypeOfNumber.valueOf(destTon),
+                    NumberingPlanIndicator.valueOf(destNpi),
+                    phoneNumber,
+                    new ESMClass(),
+                    (byte) 0,  // Protocol ID
+                    (byte) 0,  // Priority
+                    TIME_FORMATTER.format(new Date()),  // Validity period
+                    null,  // Registered delivery
+                    (byte) 0,  // Replace if present flag
+                    DataCoding.newInstance(0),  // Data coding - правильно используем DataCoding
+                    (byte) 0,  // SM default message ID
+                    message.getBytes(StandardCharsets.UTF_8)  // Текст сообщения
+            );
+            
+            logger.info("SMS отправлено на номер {} с ID: {}", phoneNumber, messageId);
+            return messageId;
+            
+        } catch (Exception e) {
+            logger.error("Ошибка при отправке SMS на номер " + phoneNumber, e);
+            return null;
+        }
+    }
+} 

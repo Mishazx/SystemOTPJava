@@ -1,0 +1,88 @@
+package ru.mishazx.systemotpjava.config;
+
+import org.jsmpp.bean.BindType;
+import org.jsmpp.bean.NumberingPlanIndicator;
+import org.jsmpp.bean.TypeOfNumber;
+import org.jsmpp.extra.SessionState;
+import org.jsmpp.session.SMPPSession;
+import org.jsmpp.session.SessionStateListener;
+import org.jsmpp.session.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
+import ru.mishazx.systemotpjava.smpp.MessageReceiverListenerImpl;
+import java.io.IOException;
+
+@Configuration
+@ConditionalOnProperty(name = "smpp.enabled", havingValue = "true", matchIfMissing = false)
+public class SmppConfig {
+    private static final Logger logger = LoggerFactory.getLogger(SmppConfig.class);
+
+    @Value("${smpp.host:}")
+    private String host;
+    
+    @Value("${smpp.port:2775}")
+    private int port;
+    
+    @Value("${smpp.system-id:}")
+    private String systemId;
+    
+    @Value("${smpp.password:}")
+    private String password;
+    
+    @Value("${smpp.source-address:OTPSYSTEM}")
+    private String sourceAddress;
+    
+    @Value("${smpp.source-ton:5}")
+    private byte sourceTon;
+    
+    @Value("${smpp.source-npi:0}")
+    private byte sourceNpi;
+    
+    @Autowired
+    private MessageReceiverListenerImpl messageReceiverListener;
+    
+    @Bean
+    public SMPPSession smppSession() {
+        // Создаем сессию только если все необходимые параметры указаны
+        if (host == null || host.isEmpty() || systemId == null || systemId.isEmpty()) {
+            logger.info("SMPP конфигурация не задана полностью, SMPP клиент не будет инициализирован");
+            return null;
+        }
+        
+        try {
+            SMPPSession session = new SMPPSession();
+            session.setMessageReceiverListener(messageReceiverListener);
+            
+            session.addSessionStateListener(new SessionStateListener() {
+                @Override
+                public void onStateChange(SessionState newState, SessionState oldState, Session source) {
+                    logger.info("SMPP сессия изменила состояние с {} на {}", oldState, newState);
+                }
+            });
+            
+            logger.info("Подключение к SMPP серверу {}:{}", host, port);
+            String bindResult = session.connectAndBind(
+                    host,
+                    port,
+                    systemId,
+                    password,
+                    "SMPP",
+                    TypeOfNumber.valueOf(sourceTon),
+                    NumberingPlanIndicator.valueOf(sourceNpi),
+                    BindType.BIND_TRX);
+            
+            logger.info("SMPP сессия установлена: {}", bindResult);
+            return session;
+            
+        } catch (IOException e) {
+            logger.error("Ошибка при подключении к SMPP серверу", e);
+            return null;
+        }
+    }
+} 

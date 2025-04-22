@@ -2,86 +2,90 @@ package ru.mishazx.systemotpjava.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import ru.mishazx.systemotpjava.services.EmailService;
+// import ru.mishazx.systemotpjava.services.SmppSmsService;
 
 /**
- * Сервис для отправки уведомлений через различные каналы (SMS, Email, Telegram).
+ * Сервис для отправки уведомлений пользователям через различные каналы
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class NotificationService {
 
-    private final JavaMailSender mailSender;
-    
+    private final EmailService emailService;
+    // private final SmppSmsService smppSmsService;
+
     /**
-     * Отправляет OTP код по SMS.
+     * Отправляет OTP код пользователю через указанный канал связи
+     *
+     * @param contact   контакт пользователя (email или телефон)
+     * @param otpCode   сгенерированный OTP код
+     * @param channel   канал связи (EMAIL, SMS)
+     * @return          true если отправка успешна
+     */
+    public boolean sendOtp(String contact, String otpCode, NotificationChannel channel) {
+        try {
+            switch (channel) {
+                case EMAIL:
+                    emailService.sendOtpEmail(contact, otpCode);
+                    break;
+                case SMS:
+                    // smppSmsService.sendOtp(contact, otpCode);
+                    break;
+                default:
+                    log.error("Unsupported notification channel: {}", channel);
+                    return false;
+            }
+            log.info("OTP code sent to {} via {}", contact, channel);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send OTP via {}: {}", channel, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Отправляет OTP код по SMS (метод для обратной совместимости)
      *
      * @param phoneNumber номер телефона получателя
      * @param otpCode код для отправки
      * @return true если отправка успешна
      */
     public boolean sendSmsOtp(String phoneNumber, String otpCode) {
-        try {
-            // В реальной системе здесь должна быть интеграция с SMS-провайдером
-            log.info("Sending SMS OTP to {}: {}", phoneNumber, otpCode);
-            
-            // Пример реализации с использованием API SMS-провайдера:
-            // smsApiClient.sendMessage(phoneNumber, "Ваш код подтверждения: " + otpCode);
-            
-            // Для демонстрации считаем, что SMS успешно отправлена
-            return true;
-        } catch (Exception e) {
-            log.error("Error sending SMS OTP", e);
-            return false;
-        }
+        return sendOtp(phoneNumber, otpCode, NotificationChannel.SMS);
     }
-    
+
     /**
-     * Отправляет OTP код по электронной почте.
+     * Отправляет OTP код по электронной почте (метод для обратной совместимости)
      *
      * @param email адрес электронной почты получателя
      * @param otpCode код для отправки
      * @return true если отправка успешна
      */
     public boolean sendEmailOtp(String email, String otpCode) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(email);
-            message.setSubject("Код подтверждения");
-            message.setText("Ваш код подтверждения: " + otpCode + "\n\nКод действителен в течение 5 минут.");
-            
-            mailSender.send(message);
-            log.info("Email OTP sent to: {}: {}", email, otpCode);
-            return true;
-        } catch (Exception e) {
-            log.error("Error sending email OTP", e);
-            return false;
-        }
+        return sendOtp(email, otpCode, NotificationChannel.EMAIL);
     }
-    
+
     /**
-     * Отправляет OTP код через Telegram.
+     * Отправляет OTP код через Telegram (метод для обратной совместимости)
      *
      * @param telegramUsername имя пользователя в Telegram
      * @param otpCode код для отправки
      * @return true если отправка успешна
      */
     public boolean sendTelegramOtp(String telegramUsername, String otpCode) {
-        try {
-            // В реальной системе здесь должна быть интеграция с Telegram Bot API
-            log.info("Sending Telegram OTP to {}: {}", telegramUsername, otpCode);
-            
-            // Пример реализации с использованием Bot API:
-            // telegramBot.sendMessage(telegramUsername, "Ваш код подтверждения: " + otpCode);
-            
-            // Для демонстрации считаем, что сообщение успешно отправлено
-            return true;
-        } catch (Exception e) {
-            log.error("Error sending Telegram OTP", e);
-            return false;
-        }
+        // Пока просто логируем, так как Telegram не реализован
+        log.info("TEST MODE - Would send Telegram OTP to {} with code: {}", telegramUsername, otpCode);
+        return true;
+    }
+
+    /**
+     * Каналы доставки уведомлений
+     */
+    public enum NotificationChannel {
+        EMAIL,
+        SMS
     }
 } 

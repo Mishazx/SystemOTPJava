@@ -12,11 +12,22 @@ spring:
   
   # Настройки JPA и Hibernate
   jpa:
-    show-sql: true
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-#      ddl-auto:
-      default_schema: otp
-      ddl-auto: update
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        default_schema: otp
+        format_sql: true
+        hbm2ddl:
+          create_namespaces: true
+  
+  # Отключаем JDBC чтобы избежать конфликтов
+  data:
+    jdbc:
+      repositories:
+        enabled: false
   
   # Настройки шаблонизатора Thymeleaf
   thymeleaf:
@@ -43,4 +54,25 @@ spring:
 
 # Настройка порта сервера
 server:
-  port: ${SERVER_PORT:8081} 
+  port: ${SERVER_PORT:8081}
+
+# Настройки SMS API (Exolve)
+sms:
+  api:
+    url: https://api.exolve.ru/messaging/v1/SendSMS
+    key: ${SMS_API_KEY}
+    sender: ${SMS_SENDER_NUMBER:OTPSYSTEM} 
+
+# Настройки SMPP для отправки SMS
+smpp:
+  # Временно отключаем SMPP, чтобы приложение запускалось без ошибок
+  enabled: false
+  host: ${SMPP_HOST:}
+  port: ${SMPP_PORT:2775}
+  system-id: ${SMPP_SYSTEM_ID:}
+  password: ${SMPP_PASSWORD:}
+  source-address: ${SMPP_SOURCE_ADDRESS:OTPSYSTEM}
+  source-ton: ${SMPP_SOURCE_TON:5}
+  source-npi: ${SMPP_SOURCE_NPI:0}
+  destination-ton: ${SMPP_DEST_TON:1}
+  destination-npi: ${SMPP_DEST_NPI:1} 
