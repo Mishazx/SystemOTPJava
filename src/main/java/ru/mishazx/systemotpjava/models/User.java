@@ -52,5 +52,4 @@ public class User {
     @Builder.Default
     // Аккаунт не заблокирован
     private boolean accountNonLocked = true;
-
 }

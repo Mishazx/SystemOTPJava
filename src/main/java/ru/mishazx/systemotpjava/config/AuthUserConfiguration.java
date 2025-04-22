@@ -51,8 +51,6 @@ public class AuthUserConfiguration {
                                 .requestMatchers("/").permitAll()
                                 // Пути OTP аутентификации доступны аутентифицированным пользователям
                                 .requestMatchers("/auth/otp/**").authenticated()
-                                // API для работы с транзакциями и категориями - только для аутентифицированных пользователей
-                                .requestMatchers("/api/**").authenticated()
                                 // Все остальные страницы - только для аутентифицированных пользователей
                                 .anyRequest().authenticated()
                 )
